@@ -27,10 +27,10 @@ type IssuesModel struct {
 func NewIssuesModel(client api.Client) IssuesModel {
 	columns := []table.Column{
 		{Title: "#", Width: 6},
-		{Title: "Title", Width: 40},
+		{Title: "Title", Width: 30},
 		{Title: "Author", Width: 14},
-		{Title: "Labels", Width: 20},
-		{Title: "Assignees", Width: 16},
+		{Title: "Labels", Width: 18},
+		{Title: "Assignees", Width: 14},
 	}
 
 	t := table.New(
@@ -68,36 +68,42 @@ func (m *IssuesModel) SetDimensions(width, height int) {
 	m.width = width
 	m.height = height
 
-	usableWidth := width - 4
-	if usableWidth < 60 {
-		usableWidth = 60
+	// Available width inside FrameBox (padding: 1 left, 1 right => 2 chars)
+	availableWidth := width - 2
+	if availableWidth < 60 {
+		availableWidth = 60
+	}
+
+	// 5 columns with cell padding (0, 1) and right border => 3 chars overhead per column
+	numCols := 5
+	colOverhead := numCols * 3
+	usableWidth := availableWidth - colOverhead
+	if usableWidth < 45 {
+		usableWidth = 45
 	}
 
 	numWidth := 6
 	remaining := usableWidth - numWidth
-	if remaining < 30 {
-		remaining = 30
-	}
 
-	authorWidth := remaining * 18 / 100
+	authorWidth := remaining * 16 / 100
 	if authorWidth < 12 {
 		authorWidth = 12
-	} else if authorWidth > 20 {
-		authorWidth = 20
+	} else if authorWidth > 18 {
+		authorWidth = 18
 	}
 
-	assigneesWidth := remaining * 18 / 100
+	assigneesWidth := remaining * 16 / 100
 	if assigneesWidth < 12 {
 		assigneesWidth = 12
-	} else if assigneesWidth > 22 {
-		assigneesWidth = 22
+	} else if assigneesWidth > 18 {
+		assigneesWidth = 18
 	}
 
-	labelsWidth := remaining * 24 / 100
-	if labelsWidth < 16 {
-		labelsWidth = 16
-	} else if labelsWidth > 32 {
-		labelsWidth = 32
+	labelsWidth := remaining * 20 / 100
+	if labelsWidth < 14 {
+		labelsWidth = 14
+	} else if labelsWidth > 22 {
+		labelsWidth = 22
 	}
 
 	titleWidth := remaining - authorWidth - assigneesWidth - labelsWidth
@@ -113,7 +119,7 @@ func (m *IssuesModel) SetDimensions(width, height int) {
 		{Title: "Assignees", Width: assigneesWidth},
 	})
 
-	m.table.SetWidth(width)
+	m.table.SetWidth(availableWidth)
 	m.table.SetHeight(height - 1)
 }
 

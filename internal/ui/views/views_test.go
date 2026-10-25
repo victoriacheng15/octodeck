@@ -123,6 +123,7 @@ func TestIssuesModel_TableRendering(t *testing.T) {
 				"Author",
 				"Labels",
 				"Assignees",
+				"│",
 			},
 		},
 		{
@@ -136,6 +137,7 @@ func TestIssuesModel_TableRendering(t *testing.T) {
 				"Author",
 				"Labels",
 				"Assignees",
+				"│",
 			},
 		},
 	}
@@ -189,6 +191,7 @@ func TestPRsModel_TableRendering(t *testing.T) {
 				"Author",
 				"Review",
 				"CI",
+				"│",
 			},
 		},
 		{
@@ -202,6 +205,7 @@ func TestPRsModel_TableRendering(t *testing.T) {
 				"Author",
 				"Review",
 				"CI",
+				"│",
 			},
 		},
 	}

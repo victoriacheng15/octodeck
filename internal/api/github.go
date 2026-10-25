@@ -79,6 +79,14 @@ func NewGitHubClient(repo types.RepoContext, opts GitHubClientOptions) (*GitHubC
 	}, nil
 }
 
+// SetRepo updates the target repository context and flushes in-memory cache.
+func (c *GitHubClient) SetRepo(repo types.RepoContext) {
+	c.repo = repo
+	if c.cache != nil {
+		c.cache.Clear()
+	}
+}
+
 // GetRateLimit returns the current rate limit quota recorded by the tracker.
 func (c *GitHubClient) GetRateLimit() types.RateLimit {
 	if c.rateTracker == nil {

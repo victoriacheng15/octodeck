@@ -21,6 +21,7 @@ type MockClient struct {
 	RerunFailedJobsFn  func(ctx context.Context, runID int64) error
 	CancelWorkflowFn   func(ctx context.Context, runID int64) error
 	RateLimit          types.RateLimit
+	Repo               types.RepoContext
 }
 
 var _ Client = (*MockClient)(nil)
@@ -213,6 +214,10 @@ func (m *MockClient) CancelWorkflowRun(ctx context.Context, runID int64) error {
 		return m.CancelWorkflowFn(ctx, runID)
 	}
 	return nil
+}
+
+func (m *MockClient) SetRepo(repo types.RepoContext) {
+	m.Repo = repo
 }
 
 func (m *MockClient) GetRateLimit() types.RateLimit {

@@ -51,6 +51,11 @@ type ViewerResolvedMsg struct {
 	Err    error
 }
 
+// RepoSwitchedMsg delivers a newly targeted repository context after in-TUI switching.
+type RepoSwitchedMsg struct {
+	Repo RepoContext
+}
+
 // MutationResultMsg communicates the outcome of a triage mutation (assign, close, approve, rerun).
 type MutationResultMsg struct {
 	Operation string

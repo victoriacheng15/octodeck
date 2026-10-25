@@ -336,3 +336,27 @@ func TestMockClient_GetRateLimit(t *testing.T) {
 		})
 	}
 }
+
+func TestMockClient_SetRepo(t *testing.T) {
+	tests := []struct {
+		name     string
+		repo     types.RepoContext
+		expected types.RepoContext
+	}{
+		{
+			name:     "update repository context",
+			repo:     types.RepoContext{Owner: "charmbracelet", Name: "bubbletea", Host: "github.com"},
+			expected: types.RepoContext{Owner: "charmbracelet", Name: "bubbletea", Host: "github.com"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			client := NewMockClient()
+			client.SetRepo(tt.repo)
+			if client.Repo != tt.expected {
+				t.Errorf("SetRepo() = %+v, want %+v", client.Repo, tt.expected)
+			}
+		})
+	}
+}

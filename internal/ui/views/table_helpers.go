@@ -22,14 +22,22 @@ var (
 // DefaultTableStyles constructs unified styling for all tables.
 func DefaultTableStyles() table.Styles {
 	s := table.DefaultStyles()
+
+	headerBorder := lipgloss.NormalBorder()
+	headerBorder.BottomRight = "┴"
+
 	s.Header = s.Header.
-		BorderStyle(lipgloss.NormalBorder()).
+		BorderStyle(headerBorder).
 		BorderForeground(colorSurface).
 		BorderBottom(true).
+		BorderRight(true).
 		Bold(true).
 		Foreground(colorMauve)
 
 	s.Cell = s.Cell.
+		BorderStyle(lipgloss.NormalBorder()).
+		BorderForeground(colorSurface).
+		BorderRight(true).
 		Foreground(colorText)
 
 	s.Selected = s.Selected.
