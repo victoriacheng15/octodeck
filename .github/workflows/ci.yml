@@ -1,0 +1,78 @@
+name: Continuous Integration
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  filter:
+    name: Detect Changes
+    runs-on: ubuntu-latest
+    outputs:
+      go: ${{ steps.changes.outputs.go }}
+      markdown: ${{ steps.changes.outputs.markdown }}
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v7
+
+      - name: Path Filter
+        id: changes
+        uses: dorny/paths-filter@v4
+        with:
+          filters: |
+            go:
+              - '**/*.go'
+              - 'go.mod'
+              - 'go.sum'
+            markdown:
+              - '**/*.md'
+
+  lint:
+    name: Lint
+    needs: filter
+    if: needs.filter.outputs.go == 'true' || needs.filter.outputs.markdown == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v7
+
+      - name: Set up Go
+        if: needs.filter.outputs.go == 'true'
+        uses: actions/setup-go@v7
+        with:
+          go-version-file: 'go.mod'
+          cache: true
+
+      - name: Set up Node.js
+        if: needs.filter.outputs.markdown == 'true'
+        uses: actions/setup-node@v7
+        with:
+          node-version: 'lts/*'
+
+      - name: Run Go Lint
+        if: needs.filter.outputs.go == 'true'
+        run: make lint-go
+
+      - name: Run Markdown Lint
+        if: needs.filter.outputs.markdown == 'true'
+        run: make lint-md
+
+  # test:
+  #   name: Run Tests
+  #   needs: filter
+  #   if: needs.filter.outputs.go == 'true'
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - name: Checkout Code
+  #       uses: actions/checkout@v7
+  #
+  #     - name: Set up Go
+  #       uses: actions/setup-go@v7
+  #       with:
+  #         go-version-file: 'go.mod'
+  #         cache: true
+  #
+  #     - name: Run Tests
+  #       run: go test -v -race ./...
