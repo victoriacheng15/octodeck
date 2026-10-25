@@ -1,7 +1,6 @@
 package api
 
 import (
-	"context"
 	"net/http"
 	"time"
 
@@ -86,52 +85,4 @@ func (c *GitHubClient) GetRateLimit() types.RateLimit {
 		return types.RateLimit{}
 	}
 	return c.rateTracker.Get()
-}
-
-// ListPullRequests is stubbed until the PRs feature PR.
-func (c *GitHubClient) ListPullRequests(ctx context.Context, cursor string, limit int) ([]types.PullRequest, types.PageInfo, error) {
-	if err := ctx.Err(); err != nil {
-		return nil, types.PageInfo{}, err
-	}
-	return nil, types.PageInfo{}, nil
-}
-
-// ListWorkflowRuns is stubbed until the Workflows feature PR.
-func (c *GitHubClient) ListWorkflowRuns(ctx context.Context, commitSHA string, limit int) ([]types.WorkflowRun, error) {
-	if err := ctx.Err(); err != nil {
-		return nil, err
-	}
-	return nil, nil
-}
-
-// ListWorkflowJobs is stubbed until the Workflows feature PR.
-func (c *GitHubClient) ListWorkflowJobs(ctx context.Context, runID int64) ([]types.Job, error) {
-	if err := ctx.Err(); err != nil {
-		return nil, err
-	}
-	return nil, nil
-}
-
-// GetJobLogs is stubbed until the Workflows feature PR.
-func (c *GitHubClient) GetJobLogs(ctx context.Context, jobID int64, maxBytes int64) (string, error) {
-	if err := ctx.Err(); err != nil {
-		return "", err
-	}
-	return "", nil
-}
-
-// RerunFailedJobs is stubbed until the Workflows feature PR.
-func (c *GitHubClient) RerunFailedJobs(ctx context.Context, runID int64) error {
-	if err := ctx.Err(); err != nil {
-		return err
-	}
-	return nil
-}
-
-// CancelWorkflowRun is stubbed until the Workflows feature PR.
-func (c *GitHubClient) CancelWorkflowRun(ctx context.Context, runID int64) error {
-	if err := ctx.Err(); err != nil {
-		return err
-	}
-	return nil
 }
