@@ -8,6 +8,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/victoriacheng15/octodeck/internal/api"
 	"github.com/victoriacheng15/octodeck/internal/types"
+	"github.com/victoriacheng15/octodeck/internal/ui/views"
 )
 
 // RootModel is the top-level application model managing the active view, layout dimensions, and global keybindings.
@@ -17,6 +18,9 @@ type RootModel struct {
 	Viewer     types.Viewer
 	ActiveView types.ViewState
 	PrevView   types.ViewState
+
+	PRsView    views.PRsModel
+	IssuesView views.IssuesModel
 
 	Width  int
 	Height int
@@ -29,20 +33,37 @@ func NewRootModel(client api.Client, repo types.RepoContext, initialViewer types
 	if client == nil {
 		client = api.NewMockClient()
 	}
+
+	prsModel := views.NewPRsModel(client)
+	issuesModel := views.NewIssuesModel(client)
+	prsModel.SetDimensions(80, 20)
+	issuesModel.SetDimensions(80, 20)
+
 	return RootModel{
 		Client:     client,
 		Repo:       repo,
 		Viewer:     initialViewer,
 		ActiveView: types.ViewPRs,
 		PrevView:   types.ViewPRs,
+		PRsView:    prsModel,
+		IssuesView: issuesModel,
 		Width:      80,
 		Height:     24,
 		Theme:      DefaultTheme(),
 	}
 }
 
-// Init triggers initial asynchronous setup such as viewer hydration.
+// Init triggers initial asynchronous setup such as viewer hydration and loading views.
 func (m RootModel) Init() tea.Cmd {
+	return tea.Batch(
+		m.InitViewer(),
+		m.PRsView.Init(),
+		m.IssuesView.Init(),
+	)
+}
+
+// InitViewer hydrates authenticated viewer identity.
+func (m RootModel) InitViewer() tea.Cmd {
 	return func() tea.Msg {
 		if m.Client == nil {
 			return nil
@@ -57,10 +78,15 @@ func (m RootModel) Init() tea.Cmd {
 
 // Update processes incoming Bubble Tea messages and state transitions.
 func (m RootModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	var cmds []tea.Cmd
+
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.Width = msg.Width
 		m.Height = msg.Height
+		contentHeight := m.ContentHeight()
+		m.PRsView.SetDimensions(m.Width, contentHeight)
+		m.IssuesView.SetDimensions(m.Width, contentHeight)
 		return m, nil
 
 	case types.NavigateMsg:
@@ -75,6 +101,16 @@ func (m RootModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.Viewer = msg.Viewer
 		}
 		return m, nil
+
+	case types.PRsLoadedMsg:
+		var cmd tea.Cmd
+		m.PRsView, cmd = m.PRsView.Update(msg)
+		return m, cmd
+
+	case types.IssuesLoadedMsg:
+		var cmd tea.Cmd
+		m.IssuesView, cmd = m.IssuesView.Update(msg)
+		return m, cmd
 
 	case types.ErrMsg:
 		if msg.Err != nil {
@@ -106,7 +142,19 @@ func (m RootModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	}
 
-	return m, nil
+	// Route unhandled keys to the active sub-model
+	var subCmd tea.Cmd
+	switch m.ActiveView {
+	case types.ViewPRs:
+		m.PRsView, subCmd = m.PRsView.Update(msg)
+	case types.ViewIssues:
+		m.IssuesView, subCmd = m.IssuesView.Update(msg)
+	}
+	if subCmd != nil {
+		cmds = append(cmds, subCmd)
+	}
+
+	return m, tea.Batch(cmds...)
 }
 
 // ContentHeight calculates the vertical line budget available for child views.
@@ -128,9 +176,9 @@ func (m RootModel) View() string {
 	var innerContent string
 	switch m.ActiveView {
 	case types.ViewPRs:
-		innerContent = fmt.Sprintf("Pull Requests View\nPress 2 for Issues, 3 for Workflows.\nActive Repo: %s", m.Repo.String())
+		innerContent = m.PRsView.View()
 	case types.ViewIssues:
-		innerContent = fmt.Sprintf("Issues View\nPress 1 for PRs, 3 for Workflows.\nActive Repo: %s", m.Repo.String())
+		innerContent = m.IssuesView.View()
 	case types.ViewWorkflows:
 		innerContent = fmt.Sprintf("Workflows View\nPress 1 for PRs, 2 for Issues.\nActive Repo: %s", m.Repo.String())
 	case types.ViewJobLogs:

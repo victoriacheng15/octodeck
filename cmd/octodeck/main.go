@@ -24,7 +24,20 @@ func main() {
 		}
 	}
 
-	client := api.NewMockClient()
+	token, err := config.CheckAuth(cfg.Repo.Host)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		os.Exit(1)
+	}
+
+	client, err := api.NewGitHubClient(cfg.Repo, api.GitHubClientOptions{
+		Host:      cfg.Repo.Host,
+		AuthToken: token,
+	})
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error initializing client: %v\n", err)
+		os.Exit(1)
+	}
 	model := ui.NewRootModel(client, cfg.Repo, cfg.Viewer)
 
 	p := tea.NewProgram(

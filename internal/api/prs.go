@@ -26,7 +26,12 @@ type prsGraphQLResponse struct {
 				Author    struct {
 					Login string `json:"login"`
 				} `json:"author"`
-				HeadRefName string `json:"headRefName"`
+				ReviewDecision    string `json:"reviewDecision"`
+				HeadRefName       string `json:"headRefName"`
+				HeadRefOid        string `json:"headRefOid"`
+				StatusCheckRollup *struct {
+					State string `json:"state"`
+				} `json:"statusCheckRollup"`
 				BaseRefName string `json:"baseRefName"`
 				Comments    struct {
 					TotalCount int `json:"totalCount"`
@@ -83,6 +88,11 @@ func (c *GitHubClient) ListPullRequests(ctx context.Context, cursor string, limi
 					headRefName
 					baseRefName
 					author { login }
+					headRefOid
+					reviewDecision
+					statusCheckRollup {
+						state
+					}
 					comments { totalCount }
 					labels(first: 10) {
 						nodes { name color }
@@ -112,13 +122,22 @@ func (c *GitHubClient) ListPullRequests(ctx context.Context, cursor string, limi
 		for _, l := range n.Labels.Nodes {
 			labels = append(labels, l.Name)
 		}
+
+		var ciStatus string
+		if n.StatusCheckRollup != nil {
+			ciStatus = n.StatusCheckRollup.State
+		}
+
 		prs = append(prs, types.PullRequest{
-			ID:          n.ID,
-			Number:      n.Number,
-			Title:       n.Title,
-			Author:      n.Author.Login,
-			HeadRefName: n.HeadRefName,
-			Labels:      labels,
+			ID:                n.ID,
+			Number:            n.Number,
+			Title:             n.Title,
+			Author:            n.Author.Login,
+			HeadRefName:       n.HeadRefName,
+			HeadRefOid:        n.HeadRefOid,
+			ReviewDecision:    n.ReviewDecision,
+			StatusCheckRollup: ciStatus,
+			Labels:            labels,
 		})
 	}
 
