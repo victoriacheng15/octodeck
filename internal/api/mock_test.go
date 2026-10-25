@@ -9,7 +9,25 @@ import (
 )
 
 func TestMockClient_InterfaceCompliance(t *testing.T) {
-	var _ Client = (*MockClient)(nil)
+	tests := []struct {
+		name       string
+		client     Client
+		implements bool
+	}{
+		{
+			name:       "MockClient satisfies Client interface",
+			client:     NewMockClient(),
+			implements: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if (tt.client != nil) != tt.implements {
+				t.Fatalf("expected client compliance = %v", tt.implements)
+			}
+		})
+	}
 }
 
 func TestMockClient_ResolveViewer(t *testing.T) {

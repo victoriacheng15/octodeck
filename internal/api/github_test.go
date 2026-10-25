@@ -22,126 +22,160 @@ func TestGitHubClient_ContextCancellation(t *testing.T) {
 		rateTracker: NewRateLimitTracker(),
 	}
 
-	t.Run("ListPullRequests respects cancellation", func(t *testing.T) {
-		_, _, err := client.ListPullRequests(ctx, "", 10)
-		if err != context.Canceled {
-			t.Errorf("got %v, want context.Canceled", err)
-		}
-	})
+	tests := []struct {
+		name string
+		call func() error
+	}{
+		{
+			name: "ListPullRequests respects cancellation",
+			call: func() error {
+				_, _, err := client.ListPullRequests(ctx, "", 10)
+				return err
+			},
+		},
+		{
+			name: "ListIssues respects cancellation",
+			call: func() error {
+				_, _, err := client.ListIssues(ctx, "", 10)
+				return err
+			},
+		},
+		{
+			name: "ListWorkflowRuns respects cancellation",
+			call: func() error {
+				_, err := client.ListWorkflowRuns(ctx, "", 10)
+				return err
+			},
+		},
+		{
+			name: "ListWorkflowJobs respects cancellation",
+			call: func() error {
+				_, err := client.ListWorkflowJobs(ctx, 123)
+				return err
+			},
+		},
+		{
+			name: "GetJobLogs respects cancellation",
+			call: func() error {
+				_, err := client.GetJobLogs(ctx, 123, 1024)
+				return err
+			},
+		},
+		{
+			name: "AssignToSelf respects cancellation",
+			call: func() error {
+				return client.AssignToSelf(ctx, "I_1", "U_1")
+			},
+		},
+		{
+			name: "ApprovePullRequest respects cancellation",
+			call: func() error {
+				return client.ApprovePullRequest(ctx, "PR_1")
+			},
+		},
+		{
+			name: "CloseItem respects cancellation",
+			call: func() error {
+				return client.CloseItem(ctx, "PR_1", true)
+			},
+		},
+		{
+			name: "RerunFailedJobs respects cancellation",
+			call: func() error {
+				return client.RerunFailedJobs(ctx, 123)
+			},
+		},
+		{
+			name: "CancelWorkflowRun respects cancellation",
+			call: func() error {
+				return client.CancelWorkflowRun(ctx, 123)
+			},
+		},
+	}
 
-	t.Run("ListIssues respects cancellation", func(t *testing.T) {
-		_, _, err := client.ListIssues(ctx, "", 10)
-		if err != context.Canceled {
-			t.Errorf("got %v, want context.Canceled", err)
-		}
-	})
-
-	t.Run("ListWorkflowRuns respects cancellation", func(t *testing.T) {
-		_, err := client.ListWorkflowRuns(ctx, "", 10)
-		if err != context.Canceled {
-			t.Errorf("got %v, want context.Canceled", err)
-		}
-	})
-
-	t.Run("ListWorkflowJobs respects cancellation", func(t *testing.T) {
-		_, err := client.ListWorkflowJobs(ctx, 123)
-		if err != context.Canceled {
-			t.Errorf("got %v, want context.Canceled", err)
-		}
-	})
-
-	t.Run("GetJobLogs respects cancellation", func(t *testing.T) {
-		_, err := client.GetJobLogs(ctx, 123, 1024)
-		if err != context.Canceled {
-			t.Errorf("got %v, want context.Canceled", err)
-		}
-	})
-
-	t.Run("AssignToSelf respects cancellation", func(t *testing.T) {
-		err := client.AssignToSelf(ctx, "I_1", "U_1")
-		if err != context.Canceled {
-			t.Errorf("got %v, want context.Canceled", err)
-		}
-	})
-
-	t.Run("ApprovePullRequest respects cancellation", func(t *testing.T) {
-		err := client.ApprovePullRequest(ctx, "PR_1")
-		if err != context.Canceled {
-			t.Errorf("got %v, want context.Canceled", err)
-		}
-	})
-
-	t.Run("CloseItem respects cancellation", func(t *testing.T) {
-		err := client.CloseItem(ctx, "PR_1", true)
-		if err != context.Canceled {
-			t.Errorf("got %v, want context.Canceled", err)
-		}
-	})
-
-	t.Run("RerunFailedJobs respects cancellation", func(t *testing.T) {
-		err := client.RerunFailedJobs(ctx, 123)
-		if err != context.Canceled {
-			t.Errorf("got %v, want context.Canceled", err)
-		}
-	})
-
-	t.Run("CancelWorkflowRun respects cancellation", func(t *testing.T) {
-		err := client.CancelWorkflowRun(ctx, 123)
-		if err != context.Canceled {
-			t.Errorf("got %v, want context.Canceled", err)
-		}
-	})
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if err := tt.call(); err != context.Canceled {
+				t.Errorf("got %v, want context.Canceled", err)
+			}
+		})
+	}
 }
 
 func TestGitHubClient_RateLimitTracking(t *testing.T) {
-	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("X-Ratelimit-Limit", "5000")
-		w.Header().Set("X-Ratelimit-Remaining", "4800")
-		w.Header().Set("X-Ratelimit-Used", "200")
-		w.Header().Set("X-Ratelimit-Reset", "1700000000")
-
-		if strings.Contains(r.URL.Path, "graphql") {
-			w.WriteHeader(http.StatusOK)
-			_, _ = w.Write([]byte(`{"data":{"viewer":{"login":"testuser","id":"MDQ6VXNlcjE="}}}`))
-			return
-		}
-
-		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write([]byte(`{}`))
-	}))
-	defer server.Close()
-
-	repo := types.RepoContext{Owner: "testowner", Name: "testrepo"}
-	client, err := NewGitHubClient(repo, GitHubClientOptions{
-		Host:      server.Listener.Addr().String(),
-		AuthToken: "mock-token",
-		Transport: server.Client().Transport,
-	})
-	if err != nil {
-		t.Fatalf("failed to create client: %v", err)
+	tests := []struct {
+		name       string
+		headers    map[string]string
+		respBody   string
+		wantViewer types.Viewer
+		wantLimit  int
+		wantRem    int
+	}{
+		{
+			name: "resolve viewer and capture rate limit headers",
+			headers: map[string]string{
+				"X-Ratelimit-Limit":     "5000",
+				"X-Ratelimit-Remaining": "4800",
+				"X-Ratelimit-Used":      "200",
+				"X-Ratelimit-Reset":     "1700000000",
+			},
+			respBody: `{"data":{"viewer":{"login":"testuser","id":"MDQ6VXNlcjE="}}}`,
+			wantViewer: types.Viewer{
+				Login: "testuser",
+				ID:    "MDQ6VXNlcjE=",
+			},
+			wantLimit: 5000,
+			wantRem:   4800,
+		},
 	}
 
-	viewer, err := client.ResolveViewer(context.Background())
-	if err != nil {
-		t.Fatalf("ResolveViewer failed: %v", err)
-	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				for k, v := range tt.headers {
+					w.Header().Set(k, v)
+				}
+				if strings.Contains(r.URL.Path, "graphql") {
+					w.WriteHeader(http.StatusOK)
+					_, _ = w.Write([]byte(tt.respBody))
+					return
+				}
+				w.WriteHeader(http.StatusOK)
+				_, _ = w.Write([]byte(`{}`))
+			}))
+			defer server.Close()
 
-	if viewer.Login != "testuser" || viewer.ID != "MDQ6VXNlcjE=" {
-		t.Errorf("unexpected viewer: %+v", viewer)
-	}
+			repo := types.RepoContext{Owner: "testowner", Name: "testrepo"}
+			client, err := NewGitHubClient(repo, GitHubClientOptions{
+				Host:      server.Listener.Addr().String(),
+				AuthToken: "mock-token",
+				Transport: server.Client().Transport,
+			})
+			if err != nil {
+				t.Fatalf("failed to create client: %v", err)
+			}
 
-	// Verify rate limit tracker was updated from response headers
-	quota := client.GetRateLimit()
-	if quota.Limit != 5000 || quota.Remaining != 4800 {
-		t.Errorf("quota = %+v, want Limit=5000, Remaining=4800", quota)
-	}
+			viewer, err := client.ResolveViewer(context.Background())
+			if err != nil {
+				t.Fatalf("ResolveViewer failed: %v", err)
+			}
 
-	// Verify caching returns same viewer without another network call
-	cachedViewer, err := client.ResolveViewer(context.Background())
-	if err != nil {
-		t.Fatalf("cached ResolveViewer failed: %v", err)
-	}
-	if cachedViewer.Login != viewer.Login {
-		t.Errorf("cached login = %s, want %s", cachedViewer.Login, viewer.Login)
+			if viewer.Login != tt.wantViewer.Login || viewer.ID != tt.wantViewer.ID {
+				t.Errorf("got viewer %+v, want %+v", viewer, tt.wantViewer)
+			}
+
+			quota := client.GetRateLimit()
+			if quota.Limit != tt.wantLimit || quota.Remaining != tt.wantRem {
+				t.Errorf("quota = %+v, want Limit=%d, Remaining=%d", quota, tt.wantLimit, tt.wantRem)
+			}
+
+			cachedViewer, err := client.ResolveViewer(context.Background())
+			if err != nil {
+				t.Fatalf("cached ResolveViewer failed: %v", err)
+			}
+			if cachedViewer.Login != viewer.Login {
+				t.Errorf("cached login = %s, want %s", cachedViewer.Login, viewer.Login)
+			}
+		})
 	}
 }

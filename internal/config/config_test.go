@@ -92,16 +92,38 @@ func TestResolveRepo(t *testing.T) {
 }
 
 func TestCheckAuth(t *testing.T) {
-	// Temporarily override GH_TOKEN
 	origToken := os.Getenv("GH_TOKEN")
 	defer os.Setenv("GH_TOKEN", origToken)
 
-	os.Setenv("GH_TOKEN", "mock-token-secret")
-	token, err := CheckAuth("github.com")
-	if err != nil {
-		t.Fatalf("unexpected error with GH_TOKEN set: %v", err)
+	tests := []struct {
+		name      string
+		tokenEnv  string
+		host      string
+		wantToken string
+		wantErr   bool
+	}{
+		{
+			name:      "valid token in environment",
+			tokenEnv:  "mock-token-secret",
+			host:      "github.com",
+			wantToken: "mock-token-secret",
+			wantErr:   false,
+		},
 	}
-	if token != "mock-token-secret" {
-		t.Errorf("CheckAuth() = %q, want %q", token, "mock-token-secret")
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			os.Setenv("GH_TOKEN", tt.tokenEnv)
+			token, err := CheckAuth(tt.host)
+			if tt.wantErr && err == nil {
+				t.Fatalf("expected error, got nil")
+			}
+			if !tt.wantErr && err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if token != tt.wantToken {
+				t.Errorf("CheckAuth() = %q, want %q", token, tt.wantToken)
+			}
+		})
 	}
 }
