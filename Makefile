@@ -6,7 +6,14 @@ help: ## Display this help message
 
 ##@ Go
 
-.PHONY: lint-go vet format-go test
+.PHONY: build run lint-go vet format-go test cov
+build: ## Build binary in bin/
+	@mkdir -p bin
+	go build -o bin/octodeck ./cmd/octodeck
+
+run: build ## Run binary
+	./bin/octodeck
+
 lint-go: ## Run Go static analysis (go vet)
 	go vet ./...
 
@@ -17,6 +24,11 @@ format-go: ## Format Go source code
 
 test: ## Run tests
 	go test -v -race ./...
+
+cov: ## Run tests and report code coverage
+	go test -v -race -coverprofile=coverage.out -covermode=atomic ./...
+	go tool cover -func=coverage.out
+	rm coverage.out
 
 ##@ Markdown
 
