@@ -68,13 +68,22 @@ func (m *PRsModel) SetDimensions(width, height int) {
 	m.width = width
 	m.height = height
 
-	usableWidth := width - 4
-	if usableWidth < 60 {
-		usableWidth = 60
+	// Available width inside FrameBox (padding: 1 left, 1 right => 2 chars)
+	availableWidth := width - 2
+	if availableWidth < 60 {
+		availableWidth = 60
+	}
+
+	// 5 columns with cell padding (0, 1) and right border => 3 chars overhead per column
+	numCols := 5
+	colOverhead := numCols * 3
+	usableWidth := availableWidth - colOverhead
+	if usableWidth < 45 {
+		usableWidth = 45
 	}
 
 	numWidth := 6
-	reviewWidth := 18
+	reviewWidth := 16
 	ciWidth := 16
 
 	remaining := usableWidth - numWidth - reviewWidth - ciWidth
@@ -85,8 +94,8 @@ func (m *PRsModel) SetDimensions(width, height int) {
 	authorWidth := remaining * 25 / 100
 	if authorWidth < 12 {
 		authorWidth = 12
-	} else if authorWidth > 24 {
-		authorWidth = 24
+	} else if authorWidth > 20 {
+		authorWidth = 20
 	}
 
 	titleWidth := remaining - authorWidth
@@ -102,7 +111,7 @@ func (m *PRsModel) SetDimensions(width, height int) {
 		{Title: "CI", Width: ciWidth},
 	})
 
-	m.table.SetWidth(width)
+	m.table.SetWidth(availableWidth)
 	m.table.SetHeight(height - 1)
 }
 

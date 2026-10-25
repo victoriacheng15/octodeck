@@ -11,11 +11,12 @@ import (
 
 func TestRootModel_GoldenLayout(t *testing.T) {
 	tests := []struct {
-		name        string
-		width       int
-		height      int
-		activeView  types.ViewState
-		mustContain []string
+		name           string
+		width          int
+		height         int
+		activeView     types.ViewState
+		activateCmdBar bool
+		mustContain    []string
 	}{
 		{
 			name:       "standard 80x24 layout on PRs",
@@ -61,6 +62,19 @@ func TestRootModel_GoldenLayout(t *testing.T) {
 				"3:Workflows",
 			},
 		},
+		{
+			name:           "command bar active replaces footer bar",
+			width:          80,
+			height:         24,
+			activeView:     types.ViewPRs,
+			activateCmdBar: true,
+			mustContain: []string{
+				":",
+				"repo <owner/repo>",
+				"octocat",
+				"1:PRs",
+			},
+		},
 	}
 
 	for _, tt := range tests {
@@ -71,6 +85,9 @@ func TestRootModel_GoldenLayout(t *testing.T) {
 			m.Width = tt.width
 			m.Height = tt.height
 			m.ActiveView = tt.activeView
+			if tt.activateCmdBar {
+				m.CommandBar.Activate()
+			}
 
 			// Populate views with mock data
 			prs, prPages, _ := m.Client.ListPullRequests(context.Background(), "", 30)

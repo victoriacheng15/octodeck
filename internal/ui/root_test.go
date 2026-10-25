@@ -164,6 +164,20 @@ func TestRootModel_Messages(t *testing.T) {
 				}
 			},
 		},
+		{
+			name: "RepoSwitchedMsg updates active repo context",
+			msg: types.RepoSwitchedMsg{
+				Repo: types.RepoContext{Owner: "golang", Name: "go", Host: "github.com"},
+			},
+			assert: func(t *testing.T, m RootModel) {
+				if m.Repo.String() != "golang/go" {
+					t.Errorf("got repo %q, want %q", m.Repo.String(), "golang/go")
+				}
+				if m.ErrMsg != "" {
+					t.Errorf("expected ErrMsg to be empty, got %q", m.ErrMsg)
+				}
+			},
+		},
 	}
 
 	for _, tt := range tests {
@@ -171,6 +185,115 @@ func TestRootModel_Messages(t *testing.T) {
 			m := NewRootModel(api.NewMockClient(), types.RepoContext{}, types.Viewer{})
 			updatedModel, _ := m.Update(tt.msg)
 			tt.assert(t, updatedModel.(RootModel))
+		})
+	}
+}
+
+func TestRootModel_CommandBarInteraction(t *testing.T) {
+	tests := []struct {
+		name          string
+		initialActive bool
+		initialValue  string
+		inputKey      tea.KeyMsg
+		expectActive  bool
+		expectQuit    bool
+		expectView    types.ViewState
+		checkRepo     string
+	}{
+		{
+			name:          "colon activates command bar",
+			initialActive: false,
+			inputKey:      tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune(":")},
+			expectActive:  true,
+			expectQuit:    false,
+			expectView:    types.ViewPRs,
+		},
+		{
+			name:          "typing 2 while command bar active does not switch tab",
+			initialActive: true,
+			inputKey:      tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("2")},
+			expectActive:  true,
+			expectQuit:    false,
+			expectView:    types.ViewPRs,
+		},
+		{
+			name:          "typing q while command bar active does not quit",
+			initialActive: true,
+			inputKey:      tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("q")},
+			expectActive:  true,
+			expectQuit:    false,
+			expectView:    types.ViewPRs,
+		},
+		{
+			name:          "escape deactivates command bar",
+			initialActive: true,
+			inputKey:      tea.KeyMsg{Type: tea.KeyEscape},
+			expectActive:  false,
+			expectQuit:    false,
+			expectView:    types.ViewPRs,
+		},
+		{
+			name:          "ctrl+c while command bar active quits application",
+			initialActive: true,
+			inputKey:      tea.KeyMsg{Type: tea.KeyCtrlC},
+			expectActive:  true,
+			expectQuit:    true,
+			expectView:    types.ViewPRs,
+		},
+		{
+			name:          "enter with :repo submits RepoSwitchedMsg and deactivates",
+			initialActive: true,
+			initialValue:  ":repo charmbracelet/lipgloss",
+			inputKey:      tea.KeyMsg{Type: tea.KeyEnter},
+			expectActive:  false,
+			expectQuit:    false,
+			expectView:    types.ViewPRs,
+			checkRepo:     "charmbracelet/lipgloss",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			m := NewRootModel(api.NewMockClient(), types.RepoContext{Owner: "cli", Name: "go-gh"}, types.Viewer{})
+			m.ActiveView = types.ViewPRs
+			if tt.initialActive {
+				m.CommandBar.Activate()
+				if tt.initialValue != "" {
+					m.CommandBar.input.SetValue(tt.initialValue)
+				}
+			}
+
+			updated, cmd := m.Update(tt.inputKey)
+			root := updated.(RootModel)
+
+			if root.CommandBar.Active() != tt.expectActive {
+				t.Errorf("CommandBar.Active() = %v, want %v", root.CommandBar.Active(), tt.expectActive)
+			}
+
+			if tt.expectQuit && cmd == nil {
+				t.Errorf("expected tea.Quit command, got nil")
+			}
+
+			if root.ActiveView != tt.expectView {
+				t.Errorf("ActiveView = %v, want %v", root.ActiveView, tt.expectView)
+			}
+
+			if tt.checkRepo != "" {
+				if cmd == nil {
+					t.Fatalf("expected command from enter key, got nil")
+				}
+				msg := cmd()
+				repoMsg, ok := msg.(types.RepoSwitchedMsg)
+				if !ok {
+					t.Fatalf("expected RepoSwitchedMsg, got %T (%v)", msg, msg)
+				}
+				// Feed RepoSwitchedMsg back into root model
+				updatedAfterSwitch, _ := root.Update(repoMsg)
+				root = updatedAfterSwitch.(RootModel)
+				if root.Repo.String() != tt.checkRepo {
+					t.Errorf("Repo = %s, want %s", root.Repo.String(), tt.checkRepo)
+				}
+			}
 		})
 	}
 }

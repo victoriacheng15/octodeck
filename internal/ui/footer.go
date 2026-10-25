@@ -19,6 +19,7 @@ func RenderFooter(quota types.RateLimit, errMsg string, width int, theme Theme) 
 		desc string
 	}{
 		{"1-3", "tabs"},
+		{":", "command"},
 		{"/", "filter"},
 		{"r", "refresh"},
 		{"q", "quit"},

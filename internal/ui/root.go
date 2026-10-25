@@ -21,6 +21,7 @@ type RootModel struct {
 
 	PRsView    views.PRsModel
 	IssuesView views.IssuesModel
+	CommandBar CommandBarModel
 
 	Width  int
 	Height int
@@ -39,6 +40,9 @@ func NewRootModel(client api.Client, repo types.RepoContext, initialViewer types
 	prsModel.SetDimensions(80, 20)
 	issuesModel.SetDimensions(80, 20)
 
+	cmdBar := NewCommandBarModel()
+	cmdBar.SetWidth(80)
+
 	return RootModel{
 		Client:     client,
 		Repo:       repo,
@@ -47,6 +51,7 @@ func NewRootModel(client api.Client, repo types.RepoContext, initialViewer types
 		PrevView:   types.ViewPRs,
 		PRsView:    prsModel,
 		IssuesView: issuesModel,
+		CommandBar: cmdBar,
 		Width:      80,
 		Height:     24,
 		Theme:      DefaultTheme(),
@@ -78,16 +83,34 @@ func (m RootModel) InitViewer() tea.Cmd {
 
 // Update processes incoming Bubble Tea messages and state transitions.
 func (m RootModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	if m.CommandBar.Active() {
+		if keyMsg, ok := msg.(tea.KeyMsg); ok {
+			var cmd tea.Cmd
+			m.CommandBar, cmd = m.CommandBar.Update(keyMsg)
+			return m, cmd
+		}
+	}
+
 	var cmds []tea.Cmd
 
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.Width = msg.Width
 		m.Height = msg.Height
+		m.CommandBar.SetWidth(m.Width)
 		contentHeight := m.ContentHeight()
 		m.PRsView.SetDimensions(m.Width, contentHeight)
 		m.IssuesView.SetDimensions(m.Width, contentHeight)
 		return m, nil
+
+	case types.RepoSwitchedMsg:
+		m.Repo = msg.Repo
+		m.ErrMsg = ""
+		m.Client.SetRepo(msg.Repo)
+		return m, tea.Batch(
+			m.PRsView.FetchPRs(""),
+			m.IssuesView.FetchIssues(""),
+		)
 
 	case types.NavigateMsg:
 		m.PrevView = m.ActiveView
@@ -120,6 +143,10 @@ func (m RootModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case tea.KeyMsg:
 		switch msg.String() {
+		case ":":
+			m.ErrMsg = ""
+			cmd := m.CommandBar.Activate()
+			return m, cmd
 		case "ctrl+c", "q":
 			return m, tea.Quit
 		case "1":
@@ -169,7 +196,12 @@ func (m RootModel) ContentHeight() int {
 // View renders the complete composite screen: header, inner content, and footer.
 func (m RootModel) View() string {
 	header := RenderHeader(m.Repo, m.Viewer, m.ActiveView, m.Width, m.Theme)
-	footer := RenderFooter(m.Client.GetRateLimit(), m.ErrMsg, m.Width, m.Theme)
+	var footer string
+	if m.CommandBar.Active() {
+		footer = m.CommandBar.View()
+	} else {
+		footer = RenderFooter(m.Client.GetRateLimit(), m.ErrMsg, m.Width, m.Theme)
+	}
 
 	contentHeight := m.ContentHeight()
 

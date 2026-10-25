@@ -41,6 +41,9 @@ type Client interface {
 	// CancelWorkflowRun cancels an active workflow run via REST.
 	CancelWorkflowRun(ctx context.Context, runID int64) error
 
+	// SetRepo updates the target repository context and flushes in-memory cache.
+	SetRepo(repo types.RepoContext)
+
 	// GetRateLimit returns the most recently recorded rate-limit quota state.
 	GetRateLimit() types.RateLimit
 }
