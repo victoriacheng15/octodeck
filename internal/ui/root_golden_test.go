@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"context"
 	"strings"
 	"testing"
 
@@ -26,7 +27,8 @@ func TestRootModel_GoldenLayout(t *testing.T) {
 				"1:PRs",
 				"2:Issues",
 				"3:Workflows",
-				"Pull Requests View",
+				"Title",
+				"Author",
 				"1-3:tabs",
 				"API: 4950/5000",
 			},
@@ -41,7 +43,9 @@ func TestRootModel_GoldenLayout(t *testing.T) {
 				"1:PRs",
 				"2:Issues",
 				"3:Workflows",
-				"Issues View",
+				"Title",
+				"Author",
+				"Labels",
 				"1-3:tabs",
 			},
 		},
@@ -67,6 +71,15 @@ func TestRootModel_GoldenLayout(t *testing.T) {
 			m.Width = tt.width
 			m.Height = tt.height
 			m.ActiveView = tt.activeView
+
+			// Populate views with mock data
+			prs, prPages, _ := m.Client.ListPullRequests(context.Background(), "", 30)
+			updated, _ := m.Update(types.PRsLoadedMsg{PRs: prs, PageInfo: prPages})
+			m = updated.(RootModel)
+
+			issues, issuePages, _ := m.Client.ListIssues(context.Background(), "", 30)
+			updated, _ = m.Update(types.IssuesLoadedMsg{Issues: issues, PageInfo: issuePages})
+			m = updated.(RootModel)
 
 			rendered := m.View()
 
