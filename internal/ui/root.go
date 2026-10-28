@@ -2,7 +2,6 @@ package ui
 
 import (
 	"context"
-	"fmt"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -19,9 +18,11 @@ type RootModel struct {
 	ActiveView types.ViewState
 	PrevView   types.ViewState
 
-	PRsView    views.PRsModel
-	IssuesView views.IssuesModel
-	CommandBar CommandBarModel
+	PRsView       views.PRsModel
+	IssuesView    views.IssuesModel
+	WorkflowsView views.WorkflowsModel
+	LogsView      views.LogsModel
+	CommandBar    CommandBarModel
 
 	Width  int
 	Height int
@@ -37,24 +38,31 @@ func NewRootModel(client api.Client, repo types.RepoContext, initialViewer types
 
 	prsModel := views.NewPRsModel(client)
 	issuesModel := views.NewIssuesModel(client)
+	workflowsModel := views.NewWorkflowsModel(client)
+	logsModel := views.NewLogsModel()
+
 	prsModel.SetDimensions(80, 20)
 	issuesModel.SetDimensions(80, 20)
+	workflowsModel.SetDimensions(80, 20)
+	logsModel.SetDimensions(80, 20)
 
 	cmdBar := NewCommandBarModel()
 	cmdBar.SetWidth(80)
 
 	return RootModel{
-		Client:     client,
-		Repo:       repo,
-		Viewer:     initialViewer,
-		ActiveView: types.ViewPRs,
-		PrevView:   types.ViewPRs,
-		PRsView:    prsModel,
-		IssuesView: issuesModel,
-		CommandBar: cmdBar,
-		Width:      80,
-		Height:     24,
-		Theme:      DefaultTheme(),
+		Client:        client,
+		Repo:          repo,
+		Viewer:        initialViewer,
+		ActiveView:    types.ViewPRs,
+		PrevView:      types.ViewPRs,
+		PRsView:       prsModel,
+		IssuesView:    issuesModel,
+		WorkflowsView: workflowsModel,
+		LogsView:      logsModel,
+		CommandBar:    cmdBar,
+		Width:         80,
+		Height:        24,
+		Theme:         DefaultTheme(),
 	}
 }
 
@@ -64,6 +72,7 @@ func (m RootModel) Init() tea.Cmd {
 		m.InitViewer(),
 		m.PRsView.Init(),
 		m.IssuesView.Init(),
+		m.WorkflowsView.Init(),
 	)
 }
 
@@ -101,6 +110,8 @@ func (m RootModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		contentHeight := m.ContentHeight()
 		m.PRsView.SetDimensions(m.Width, contentHeight)
 		m.IssuesView.SetDimensions(m.Width, contentHeight)
+		m.WorkflowsView.SetDimensions(m.Width, contentHeight)
+		m.LogsView.SetDimensions(m.Width, contentHeight)
 		return m, nil
 
 	case types.RepoSwitchedMsg:
@@ -110,11 +121,49 @@ func (m RootModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, tea.Batch(
 			m.PRsView.FetchPRs(""),
 			m.IssuesView.FetchIssues(""),
+			m.WorkflowsView.FetchRuns(""),
 		)
 
 	case types.NavigateMsg:
 		m.PrevView = m.ActiveView
 		m.ActiveView = msg.Target
+		return m, nil
+
+	case types.FilterWorkflowsMsg:
+		m.PrevView = m.ActiveView
+		m.ActiveView = types.ViewWorkflows
+		m.WorkflowsView.SetFilter(msg.CommitSHA, msg.PRNumber)
+		return m, m.WorkflowsView.FetchRuns(msg.CommitSHA)
+
+	case types.WorkflowsLoadedMsg:
+		var cmd tea.Cmd
+		m.WorkflowsView, cmd = m.WorkflowsView.Update(msg)
+		return m, cmd
+
+	case types.JobsLoadedMsg:
+		var cmd tea.Cmd
+		m.WorkflowsView, cmd = m.WorkflowsView.Update(msg)
+		return m, cmd
+
+	case types.OpenJobLogsMsg:
+		m.PrevView = m.ActiveView
+		m.ActiveView = types.ViewJobLogs
+		m.LogsView.SetLoading(msg.JobID, msg.JobName)
+		return m, func() tea.Msg {
+			content, err := m.Client.GetJobLogs(context.Background(), msg.JobID, 2*1024*1024)
+			return types.LogsLoadedMsg{
+				JobID:   msg.JobID,
+				Content: content,
+				Err:     err,
+			}
+		}
+
+	case types.LogsLoadedMsg:
+		if msg.Err != nil {
+			m.LogsView.SetError(msg.Err)
+		} else {
+			m.LogsView.SetLogs(msg.JobID, m.LogsView.JobName(), msg.Content)
+		}
 		return m, nil
 
 	case types.ViewerResolvedMsg:
@@ -176,6 +225,10 @@ func (m RootModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.PRsView, subCmd = m.PRsView.Update(msg)
 	case types.ViewIssues:
 		m.IssuesView, subCmd = m.IssuesView.Update(msg)
+	case types.ViewWorkflows:
+		m.WorkflowsView, subCmd = m.WorkflowsView.Update(msg)
+	case types.ViewJobLogs:
+		m.LogsView, subCmd = m.LogsView.Update(msg)
 	}
 	if subCmd != nil {
 		cmds = append(cmds, subCmd)
@@ -212,9 +265,9 @@ func (m RootModel) View() string {
 	case types.ViewIssues:
 		innerContent = m.IssuesView.View()
 	case types.ViewWorkflows:
-		innerContent = fmt.Sprintf("Workflows View\nPress 1 for PRs, 2 for Issues.\nActive Repo: %s", m.Repo.String())
+		innerContent = m.WorkflowsView.View()
 	case types.ViewJobLogs:
-		innerContent = "Job Logs View\nPress Esc to return."
+		innerContent = m.LogsView.View()
 	}
 
 	framedContent := lipgloss.Place(

@@ -54,6 +54,32 @@ func TestRenderReviewDecision(t *testing.T) {
 	}
 }
 
+func TestRenderWorkflowStatus(t *testing.T) {
+	tests := []struct {
+		name        string
+		status      string
+		conclusion  string
+		mustContain string
+	}{
+		{name: "success conclusion", status: "completed", conclusion: "success", mustContain: "success"},
+		{name: "failure conclusion", status: "completed", conclusion: "failure", mustContain: "failure"},
+		{name: "cancelled conclusion", status: "completed", conclusion: "cancelled", mustContain: "cancel"},
+		{name: "timeout conclusion", status: "completed", conclusion: "timed_out", mustContain: "timeout"},
+		{name: "in progress status", status: "in_progress", conclusion: "", mustContain: "running"},
+		{name: "queued status", status: "queued", conclusion: "", mustContain: "queued"},
+		{name: "empty status and conclusion", status: "", conclusion: "", mustContain: "-"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := RenderWorkflowStatus(tt.status, tt.conclusion)
+			if !strings.Contains(got, tt.mustContain) {
+				t.Errorf("RenderWorkflowStatus(%q, %q) = %q, want to contain %q", tt.status, tt.conclusion, got, tt.mustContain)
+			}
+		})
+	}
+}
+
 func TestFormatLabels(t *testing.T) {
 	tests := []struct {
 		name     string

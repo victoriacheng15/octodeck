@@ -56,10 +56,12 @@ func TestRootModel_GoldenLayout(t *testing.T) {
 			height:     30,
 			activeView: types.ViewWorkflows,
 			mustContain: []string{
-				"Workflows View",
 				"1:PRs",
 				"2:Issues",
 				"3:Workflows",
+				"Workflow",
+				"Event",
+				"Status",
 			},
 		},
 		{
@@ -96,6 +98,10 @@ func TestRootModel_GoldenLayout(t *testing.T) {
 
 			issues, issuePages, _ := m.Client.ListIssues(context.Background(), "", 30)
 			updated, _ = m.Update(types.IssuesLoadedMsg{Issues: issues, PageInfo: issuePages})
+			m = updated.(RootModel)
+
+			runs, _ := m.Client.ListWorkflowRuns(context.Background(), "", 30)
+			updated, _ = m.Update(types.WorkflowsLoadedMsg{Runs: runs})
 			m = updated.(RootModel)
 
 			rendered := m.View()

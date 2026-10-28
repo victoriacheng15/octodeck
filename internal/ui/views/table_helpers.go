@@ -76,6 +76,35 @@ func RenderReviewDecision(decision string) string {
 	}
 }
 
+// RenderWorkflowStatus returns an ANSI-colored indicator for workflow and job statuses.
+func RenderWorkflowStatus(status, conclusion string) string {
+	if conclusion != "" {
+		switch strings.ToLower(conclusion) {
+		case "success":
+			return "\x1b[32m✓ success\x1b[0m"
+		case "failure":
+			return "\x1b[31m✗ failure\x1b[0m"
+		case "cancelled":
+			return "\x1b[90m⊘ cancel\x1b[0m"
+		case "timed_out":
+			return "\x1b[31m⏱ timeout\x1b[0m"
+		default:
+			return conclusion
+		}
+	}
+	switch strings.ToLower(status) {
+	case "in_progress":
+		return "\x1b[33m● running\x1b[0m"
+	case "queued":
+		return "\x1b[33m◌ queued\x1b[0m"
+	default:
+		if status == "" {
+			return "-"
+		}
+		return status
+	}
+}
+
 // FormatLabels formats a slice of label names into a comma-separated string.
 func FormatLabels(labels []string) string {
 	if len(labels) == 0 {
