@@ -1,7 +1,6 @@
 package config
 
 import (
-	"flag"
 	"fmt"
 	"os"
 
@@ -11,7 +10,7 @@ import (
 	"github.com/victoriacheng15/octodeck/internal/types"
 )
 
-// Config encapsulates runtime configuration resolved from CLI flags, environment, and git.
+// Config encapsulates runtime configuration resolved from environment and git.
 type Config struct {
 	Repo   types.RepoContext
 	Viewer types.Viewer
@@ -78,23 +77,9 @@ func ResolveRepo(repoFlag string) (types.RepoContext, error) {
 	}, nil
 }
 
-// Load parses CLI flags, validates authentication, and discovers repository context.
+// Load discovers repository context from git remotes and validates authentication.
 func Load() (Config, error) {
-	return LoadWithArgs(os.Args[1:])
-}
-
-// LoadWithArgs allows deterministic testing of flag parsing and configuration loading.
-func LoadWithArgs(args []string) (Config, error) {
-	fs := flag.NewFlagSet("octodeck", flag.ContinueOnError)
-	var repoFlag string
-	fs.StringVar(&repoFlag, "R", "", "Target repository in [HOST/]OWNER/REPO format")
-	fs.StringVar(&repoFlag, "repo", "", "Target repository in [HOST/]OWNER/REPO format")
-
-	if err := fs.Parse(args); err != nil {
-		return Config{}, err
-	}
-
-	repoCtx, err := ResolveRepo(repoFlag)
+	repoCtx, err := ResolveRepo("")
 	if err != nil {
 		return Config{}, err
 	}

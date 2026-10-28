@@ -23,6 +23,8 @@ type RootModel struct {
 	WorkflowsView views.WorkflowsModel
 	LogsView      views.LogsModel
 	CommandBar    CommandBarModel
+	LabelModal    views.LabelModal
+	HelpModal     views.HelpModal
 
 	Width  int
 	Height int
@@ -49,6 +51,12 @@ func NewRootModel(client api.Client, repo types.RepoContext, initialViewer types
 	cmdBar := NewCommandBarModel()
 	cmdBar.SetWidth(80)
 
+	labelModal := views.NewLabelModal()
+	labelModal.SetDimensions(80, 20)
+
+	helpModal := views.NewHelpModal()
+	helpModal.SetDimensions(80, 20)
+
 	return RootModel{
 		Client:        client,
 		Repo:          repo,
@@ -60,6 +68,8 @@ func NewRootModel(client api.Client, repo types.RepoContext, initialViewer types
 		WorkflowsView: workflowsModel,
 		LogsView:      logsModel,
 		CommandBar:    cmdBar,
+		LabelModal:    labelModal,
+		HelpModal:     helpModal,
 		Width:         80,
 		Height:        24,
 		Theme:         DefaultTheme(),
@@ -92,6 +102,22 @@ func (m RootModel) InitViewer() tea.Cmd {
 
 // Update processes incoming Bubble Tea messages and state transitions.
 func (m RootModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	if m.HelpModal.Active() {
+		if keyMsg, ok := msg.(tea.KeyMsg); ok {
+			var cmd tea.Cmd
+			m.HelpModal, cmd = m.HelpModal.Update(keyMsg)
+			return m, cmd
+		}
+	}
+
+	if m.LabelModal.Active() {
+		if keyMsg, ok := msg.(tea.KeyMsg); ok {
+			var cmd tea.Cmd
+			m.LabelModal, cmd = m.LabelModal.Update(keyMsg)
+			return m, cmd
+		}
+	}
+
 	if m.CommandBar.Active() {
 		if keyMsg, ok := msg.(tea.KeyMsg); ok {
 			var cmd tea.Cmd
@@ -112,6 +138,8 @@ func (m RootModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.IssuesView.SetDimensions(m.Width, contentHeight)
 		m.WorkflowsView.SetDimensions(m.Width, contentHeight)
 		m.LogsView.SetDimensions(m.Width, contentHeight)
+		m.LabelModal.SetDimensions(m.Width, contentHeight)
+		m.HelpModal.SetDimensions(m.Width, contentHeight)
 		return m, nil
 
 	case types.RepoSwitchedMsg:
@@ -190,26 +218,25 @@ func (m RootModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 
+	case types.ActionMsg:
+		m.ErrMsg = ""
+		cmd := m.handleAction(msg.Action, msg.Arg)
+		return m, cmd
+
+	case types.MutationResultMsg:
+		return m.handleMutationResult(msg)
+
 	case tea.KeyMsg:
 		switch msg.String() {
 		case ":":
 			m.ErrMsg = ""
 			cmd := m.CommandBar.Activate()
 			return m, cmd
+		case "?":
+			m.HelpModal.Open()
+			return m, nil
 		case "ctrl+c", "q":
 			return m, tea.Quit
-		case "1":
-			m.PrevView = m.ActiveView
-			m.ActiveView = types.ViewPRs
-			return m, nil
-		case "2":
-			m.PrevView = m.ActiveView
-			m.ActiveView = types.ViewIssues
-			return m, nil
-		case "3":
-			m.PrevView = m.ActiveView
-			m.ActiveView = types.ViewWorkflows
-			return m, nil
 		case "esc":
 			if m.ActiveView != m.PrevView {
 				m.ActiveView = m.PrevView
@@ -277,6 +304,12 @@ func (m RootModel) View() string {
 		lipgloss.Top,
 		m.Theme.FrameBox.Render(innerContent),
 	)
+
+	if m.LabelModal.Active() {
+		framedContent = m.LabelModal.RenderOverlay(m.Width, contentHeight)
+	} else if m.HelpModal.Active() {
+		framedContent = m.HelpModal.RenderOverlay(m.Width, contentHeight)
+	}
 
 	return lipgloss.JoinVertical(lipgloss.Top, header, framedContent, footer)
 }

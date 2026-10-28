@@ -122,6 +122,23 @@ func (m WorkflowsModel) Level() WorkflowLevel {
 	return m.level
 }
 
+// CommitSHA returns the active commit SHA filter, if any.
+func (m WorkflowsModel) CommitSHA() string {
+	return m.commitSHA
+}
+
+// SelectedRun returns the currently focused workflow run in the runs table.
+func (m WorkflowsModel) SelectedRun() (types.WorkflowRun, bool) {
+	if len(m.runs) == 0 {
+		return types.WorkflowRun{}, false
+	}
+	cursor := m.runsTable.Cursor()
+	if cursor < 0 || cursor >= len(m.runs) {
+		return types.WorkflowRun{}, false
+	}
+	return m.runs[cursor], true
+}
+
 // SetDimensions calculates responsive column widths for both runs and jobs tables.
 func (m *WorkflowsModel) SetDimensions(width, height int) {
 	m.width = width

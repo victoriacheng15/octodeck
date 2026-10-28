@@ -107,6 +107,66 @@ func TestParseCommand(t *testing.T) {
 			},
 		},
 		{
+			name:        "checkout action via :co",
+			input:       ":co",
+			expectedMsg: types.ActionMsg{Action: "checkout", Arg: ""},
+		},
+		{
+			name:        "checkout action with number via :checkout",
+			input:       ":checkout 123",
+			expectedMsg: types.ActionMsg{Action: "checkout", Arg: "123"},
+		},
+		{
+			name:        "approve action via :approve",
+			input:       ":approve",
+			expectedMsg: types.ActionMsg{Action: "approve"},
+		},
+		{
+			name:        "close action via :close",
+			input:       ":close",
+			expectedMsg: types.ActionMsg{Action: "close"},
+		},
+		{
+			name:        "assign action via :assign",
+			input:       ":assign",
+			expectedMsg: types.ActionMsg{Action: "assign"},
+		},
+		{
+			name:        "labels action via :labels",
+			input:       ":labels",
+			expectedMsg: types.ActionMsg{Action: "labels"},
+		},
+		{
+			name:        "labels action via :l",
+			input:       ":l",
+			expectedMsg: types.ActionMsg{Action: "labels"},
+		},
+		{
+			name:        "rerun action via :rerun",
+			input:       ":rerun",
+			expectedMsg: types.ActionMsg{Action: "rerun"},
+		},
+		{
+			name:        "cancel action via :cancel",
+			input:       ":cancel",
+			expectedMsg: types.ActionMsg{Action: "cancel"},
+		},
+		{
+			name:        "help action via :help",
+			input:       ":help",
+			expectedMsg: types.ActionMsg{Action: "help"},
+		},
+		{
+			name:        "help action via :h",
+			input:       ":h",
+			expectedMsg: types.ActionMsg{Action: "help"},
+		},
+		{
+			name:        "help action via :?",
+			input:       ":?",
+			expectedMsg: types.ActionMsg{Action: "help"},
+		},
+		{
 			name:  "unknown command",
 			input: ":unknown",
 			checkErr: func(err error) bool {

@@ -153,16 +153,6 @@ func (m IssuesModel) Update(msg tea.Msg) (IssuesModel, tea.Cmd) {
 
 	case tea.KeyMsg:
 		switch msg.String() {
-		case "]":
-			if m.pageInfo.HasNextPage {
-				m.loading = true
-				return m, m.FetchIssues(m.pageInfo.EndCursor)
-			}
-		case "[":
-			if m.pageInfo.HasPreviousPage {
-				m.loading = true
-				return m, m.FetchIssues(m.pageInfo.StartCursor)
-			}
 		case "r":
 			m.loading = true
 			return m, m.FetchIssues("")
@@ -171,6 +161,18 @@ func (m IssuesModel) Update(msg tea.Msg) (IssuesModel, tea.Cmd) {
 
 	m.table, cmd = m.table.Update(msg)
 	return m, cmd
+}
+
+// SelectedIssue returns the currently focused issue in the table.
+func (m IssuesModel) SelectedIssue() (types.Issue, bool) {
+	if len(m.issues) == 0 {
+		return types.Issue{}, false
+	}
+	cursor := m.table.Cursor()
+	if cursor < 0 || cursor >= len(m.issues) {
+		return types.Issue{}, false
+	}
+	return m.issues[cursor], true
 }
 
 // View renders the table or state message.

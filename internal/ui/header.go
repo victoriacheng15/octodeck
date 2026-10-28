@@ -26,9 +26,9 @@ func RenderHeader(repo types.RepoContext, viewer types.Viewer, activeView types.
 		state types.ViewState
 		label string
 	}{
-		{types.ViewPRs, "1:PRs"},
-		{types.ViewIssues, "2:Issues"},
-		{types.ViewWorkflows, "3:Workflows"},
+		{types.ViewPRs, "PRs"},
+		{types.ViewIssues, "Issues"},
+		{types.ViewWorkflows, "Workflows"},
 	}
 
 	var renderedTabs []string
