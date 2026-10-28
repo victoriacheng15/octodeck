@@ -10,6 +10,7 @@ import (
 // Catppuccin Mocha Color Palette constants
 var (
 	colorMauve   = lipgloss.Color("#cba6f7")
+	colorBlue    = lipgloss.Color("#89b4fa")
 	colorGreen   = lipgloss.Color("#a6e3a1")
 	colorRed     = lipgloss.Color("#f38ba8")
 	colorYellow  = lipgloss.Color("#f9e2af")
