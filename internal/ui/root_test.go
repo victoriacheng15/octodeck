@@ -19,24 +19,24 @@ func TestRootModel_KeyNavigation(t *testing.T) {
 		expectQuit   bool
 	}{
 		{
-			name:         "press 1 switches to PRs",
+			name:         "pressing 1 directly does not change view",
 			initialState: types.ViewIssues,
 			key:          "1",
-			expectedView: types.ViewPRs,
-			expectQuit:   false,
-		},
-		{
-			name:         "press 2 switches to Issues",
-			initialState: types.ViewPRs,
-			key:          "2",
 			expectedView: types.ViewIssues,
 			expectQuit:   false,
 		},
 		{
-			name:         "press 3 switches to Workflows",
+			name:         "pressing 2 directly does not change view",
+			initialState: types.ViewPRs,
+			key:          "2",
+			expectedView: types.ViewPRs,
+			expectQuit:   false,
+		},
+		{
+			name:         "pressing 3 directly does not change view",
 			initialState: types.ViewPRs,
 			key:          "3",
-			expectedView: types.ViewWorkflows,
+			expectedView: types.ViewPRs,
 			expectQuit:   false,
 		},
 		{

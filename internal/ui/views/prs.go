@@ -145,16 +145,6 @@ func (m PRsModel) Update(msg tea.Msg) (PRsModel, tea.Cmd) {
 
 	case tea.KeyMsg:
 		switch msg.String() {
-		case "]":
-			if m.pageInfo.HasNextPage {
-				m.loading = true
-				return m, m.FetchPRs(m.pageInfo.EndCursor)
-			}
-		case "[":
-			if m.pageInfo.HasPreviousPage {
-				m.loading = true
-				return m, m.FetchPRs(m.pageInfo.StartCursor)
-			}
 		case "r":
 			m.loading = true
 			return m, m.FetchPRs("")

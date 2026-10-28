@@ -68,6 +68,12 @@ type RepoSwitchedMsg struct {
 	Repo RepoContext
 }
 
+// ActionMsg represents a user command dispatched from the command bar.
+type ActionMsg struct {
+	Action string
+	Arg    string
+}
+
 // MutationResultMsg communicates the outcome of a triage mutation (assign, close, approve, rerun).
 type MutationResultMsg struct {
 	Operation string
