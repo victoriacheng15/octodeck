@@ -2,6 +2,7 @@ package ui
 
 import (
 	"errors"
+	"strings"
 	"testing"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -178,6 +179,49 @@ func TestRootModel_Messages(t *testing.T) {
 				}
 			},
 		},
+		{
+			name: "FilterWorkflowsMsg routes to Workflows view with filter",
+			msg: types.FilterWorkflowsMsg{
+				CommitSHA: "abcdef123456",
+				PRNumber:  12,
+			},
+			assert: func(t *testing.T, m RootModel) {
+				if m.ActiveView != types.ViewWorkflows {
+					t.Errorf("ActiveView = %v, want ViewWorkflows", m.ActiveView)
+				}
+				if m.PrevView != types.ViewPRs {
+					t.Errorf("PrevView = %v, want ViewPRs", m.PrevView)
+				}
+			},
+		},
+		{
+			name: "OpenJobLogsMsg routes to JobLogs view",
+			msg: types.OpenJobLogsMsg{
+				JobID:   999,
+				JobName: "unit-tests",
+			},
+			assert: func(t *testing.T, m RootModel) {
+				if m.ActiveView != types.ViewJobLogs {
+					t.Errorf("ActiveView = %v, want ViewJobLogs", m.ActiveView)
+				}
+				if m.LogsView.JobName() != "unit-tests" {
+					t.Errorf("LogsView.JobName() = %q, want unit-tests", m.LogsView.JobName())
+				}
+			},
+		},
+		{
+			name: "LogsLoadedMsg populates logs content in LogsView",
+			msg: types.LogsLoadedMsg{
+				JobID:   999,
+				Content: "Build finished successfully\n",
+			},
+			assert: func(t *testing.T, m RootModel) {
+				rendered := m.LogsView.View()
+				if !strings.Contains(rendered, "Build finished successfully") {
+					t.Errorf("LogsView missing rendered content: %s", rendered)
+				}
+			},
+		},
 	}
 
 	for _, tt := range tests {
@@ -292,6 +336,72 @@ func TestRootModel_CommandBarInteraction(t *testing.T) {
 				root = updatedAfterSwitch.(RootModel)
 				if root.Repo.String() != tt.checkRepo {
 					t.Errorf("Repo = %s, want %s", root.Repo.String(), tt.checkRepo)
+				}
+			}
+		})
+	}
+}
+
+func TestRootModel_PRToWorkflowsDrillDown(t *testing.T) {
+	tests := []struct {
+		name          string
+		prs           []types.PullRequest
+		pressKey      string
+		expectNav     bool
+		wantCommitSHA string
+		wantPRNum     int
+	}{
+		{
+			name: "press w on selected PR emits FilterWorkflowsMsg with PR commit SHA",
+			prs: []types.PullRequest{
+				{
+					Number:     42,
+					Title:      "Fix streaming logs",
+					Author:     "octocat",
+					HeadRefOid: "9f8e7d6c5b",
+				},
+			},
+			pressKey:      "w",
+			expectNav:     true,
+			wantCommitSHA: "9f8e7d6c5b",
+			wantPRNum:     42,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			m := NewRootModel(api.NewMockClient(), types.RepoContext{}, types.Viewer{})
+			m.ActiveView = types.ViewPRs
+
+			// Populate PRsView
+			updated, _ := m.Update(types.PRsLoadedMsg{PRs: tt.prs})
+			m = updated.(RootModel)
+
+			// Press 'w'
+			updatedAfterKey, cmd := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune(tt.pressKey)})
+			m = updatedAfterKey.(RootModel)
+
+			if tt.expectNav {
+				if cmd == nil {
+					t.Fatalf("expected non-nil command after pressing %q", tt.pressKey)
+				}
+				msg := cmd()
+				filterMsg, ok := msg.(types.FilterWorkflowsMsg)
+				if !ok {
+					t.Fatalf("expected FilterWorkflowsMsg, got %T (%v)", msg, msg)
+				}
+				if filterMsg.CommitSHA != tt.wantCommitSHA {
+					t.Errorf("CommitSHA = %q, want %q", filterMsg.CommitSHA, tt.wantCommitSHA)
+				}
+				if filterMsg.PRNumber != tt.wantPRNum {
+					t.Errorf("PRNumber = %d, want %d", filterMsg.PRNumber, tt.wantPRNum)
+				}
+
+				// Deliver FilterWorkflowsMsg to RootModel
+				updatedAfterFilter, _ := m.Update(filterMsg)
+				root := updatedAfterFilter.(RootModel)
+				if root.ActiveView != types.ViewWorkflows {
+					t.Errorf("ActiveView = %v, want ViewWorkflows", root.ActiveView)
 				}
 			}
 		})

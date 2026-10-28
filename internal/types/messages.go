@@ -26,6 +26,18 @@ type WorkflowsLoadedMsg struct {
 	Err       error
 }
 
+// FilterWorkflowsMsg requests navigating to Workflows filtered by commit SHA.
+type FilterWorkflowsMsg struct {
+	CommitSHA string
+	PRNumber  int
+}
+
+// OpenJobLogsMsg requests the root router to open the logs viewer for a specific job.
+type OpenJobLogsMsg struct {
+	JobID   int64
+	JobName string
+}
+
 // JobsLoadedMsg carries the jobs belonging to a workflow run.
 type JobsLoadedMsg struct {
 	RunID int64

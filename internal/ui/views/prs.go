@@ -158,11 +158,36 @@ func (m PRsModel) Update(msg tea.Msg) (PRsModel, tea.Cmd) {
 		case "r":
 			m.loading = true
 			return m, m.FetchPRs("")
+		case "w":
+			if len(m.prs) > 0 {
+				cursor := m.table.Cursor()
+				if cursor >= 0 && cursor < len(m.prs) {
+					pr := m.prs[cursor]
+					return m, func() tea.Msg {
+						return types.FilterWorkflowsMsg{
+							CommitSHA: pr.HeadRefOid,
+							PRNumber:  pr.Number,
+						}
+					}
+				}
+			}
 		}
 	}
 
 	m.table, cmd = m.table.Update(msg)
 	return m, cmd
+}
+
+// SelectedPR returns the currently focused pull request in the table.
+func (m PRsModel) SelectedPR() (types.PullRequest, bool) {
+	if len(m.prs) == 0 {
+		return types.PullRequest{}, false
+	}
+	cursor := m.table.Cursor()
+	if cursor < 0 || cursor >= len(m.prs) {
+		return types.PullRequest{}, false
+	}
+	return m.prs[cursor], true
 }
 
 // View renders the table or state message.
